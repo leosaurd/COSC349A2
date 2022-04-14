@@ -1,0 +1,55 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile that configures 3 virtual machines; two as a webpage(possibly) and a database server.
+Vagrant.configure("2") do |config|
+
+  #following what is said @https://github.com/mitchellh/vagrant-aws
+  config.vm.box = "dummy"
+  config.vm.provider :aws do |aws, override|
+  
+  #aws.access_key_id=""
+  #aws.secret_access_key =""
+  #aws.session_token = ""
+  #aws.keypair_name = ""
+  
+    aws.region = "us-east-1"
+    override.nfs.functional = false
+    override.vm.allowed_sync_folder_types = :rysnc
+
+  # Values input from AWS.
+    aws.keypair_name = "cosc349asgn2-Matt"
+    override.ssh.private_key_path = "~/.ssh/Cosc349asgn2.pem"
+    aws.instance_type = "t2.micro"
+    aws.security_groups = ["sg-0b5da95951a087c53","sg-0eb06a99f24715f9b"]
+    aws.availability_zone = "us-east-1a"
+    aws.subnet_id = "subnet-6325cd2f"
+    aws.ami = "ami-7b481a6d"
+    override.ssh.username = "ubuntu"
+  end
+
+  # Webserver to retrieve data from the database.
+  config.vm.define "webserver" do |webserver|
+    webserver.vm.hostname = "webserver"
+    webserver.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    webserver.vm.provision "shell", path: "webserver.sh"
+  end
+  # Making a client Virtual Machine that will run the client shell script and load a webpage. 
+  # This should be the default page. It should be able to upload data to the database.
+  config.vm.define "client" do |client|
+    client.vm.hostname = "client"
+    client.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    client.vm.provision "shell", path: "client.sh"
+  end
+  # Using an RDS Database, hence defining one is unnecessary. Code is here as a backup.
+  #config.vm.define "dbserver" do |dbserver|
+    #dbserver.vm.hostname = "dbserver"
+    #dbserver.vm.synced_folder ".", "/vagrant", owner: "vagrant", group: "vagrant", mount_options: ["dmode=775,fmode=777"]
+    #dbserver.vm.provision "shell", path: "dbserv.sh"
+  #end
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+    apt-get install -y apache2
+  SHELL
+
+end
